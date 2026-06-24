@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hostel Room Occupancy Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #F0F4F8;
+    --surface: #FFFFFF;
+    --surface2: #F7F9FC;
+    --border: #E2E8F0;
+    --text: #1A202C;
+    --text2: #4A5568;
+    --text3: #718096;
+    --vacant: #38A169;
+    --vacant-bg: #F0FFF4;
+    --vacant-border: #9AE6B4;
+    --occupied: #E53E3E;
+    --occupied-bg: #FFF5F5;
+    --occupied-border: #FEB2B2;
+    --accent: #3B6FE8;
+    --accent-light: #EBF0FD;
+    --accent-dark: #2C54C0;
+    --warning: #D69E2E;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 30px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font: 'Inter', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+    --admin-bar: #1A202C;
+  }
+  [data-theme="dark"] {
+    --bg: #0F1117;
+    --surface: #1A1D26;
+    --surface2: #20232E;
+    --border: #2D3148;
+    --text: #F0F4F8;
+    --text2: #CBD5E0;
+    --text3: #718096;
+    --vacant-bg: #1A2E22;
+    --vacant-border: #276749;
+    --occupied-bg: #2D1515;
+    --occupied-border: #742A2A;
+    --accent-light: #1A2454;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+    --shadow-lg: 0 10px 30px rgba(0,0,0,0.4);
+    --admin-bar: #0A0C12;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  /* ─── ADMIN BAR ─── */
+  #adminBar {
+    background: var(--admin-bar);
+    color: #fff;
+    padding: 8px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  #adminBar .brand { font-weight: 600; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+  #adminBar .brand span { opacity: 0.5; font-weight: 400; }
+  #adminBar .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .bar-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: var(--font);
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .bar-btn:hover { background: rgba(255,255,255,0.2); }
+  .bar-btn.accent { background: var(--accent); border-color: var(--accent); }
+  .bar-btn.accent:hover { background: var(--accent-dark); }
+  .bar-btn.danger { background: rgba(229,62,62,0.3); border-color: rgba(229,62,62,0.5); }
+  #adminStatus {
+    display: flex; align-items: center; gap: 6px; font-size: 12px;
+    color: rgba(255,255,255,0.7);
+  }
+  #adminStatus .dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #68D391;
+  }
+  #adminStatus .dot.off { background: #FC8181; }
+  .theme-toggle {
+    background: none; border: none; cursor: pointer;
+    color: rgba(255,255,255,0.7); font-size: 16px; padding: 4px;
+    line-height: 1;
+  }
+
+  /* ─── HEADER ─── */
+  #mainHeader {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    flex-wrap: wrap;
+  }
+  #mainHeader h1 { font-size: 20px; font-weight: 700; color: var(--text); }
+  #mainHeader p { font-size: 13px; color: var(--text3); margin-top: 2px; }
+  #headerActions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: var(--radius-sm);
+    font-family: var(--font); font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 1px solid transparent; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-secondary { background: var(--surface2); color: var(--text2); border-color: var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-danger { background: #FFF5F5; color: var(--occupied); border-color: var(--occupied-border); }
+  .btn-danger:hover { background: var(--occupied-bg); }
+
+  /* ─── LAYOUT ─── */
+  #app { max-width: 1280px; margin: 0 auto; padding: 24px 20px; }
+
+  /* ─── OVERALL STATS ─── */
+  #statsRow {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .stat-card .label { font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--text3); margin-bottom: 6px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+  .stat-card .sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .stat-card.occupied-card .value { color: var(--occupied); }
+  .stat-card.vacant-card .value { color: var(--vacant); }
+  .stat-card.accent-card .value { color: var(--accent); }
+
+  /* ─── CHART ROW ─── */
+  #chartRow {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 24px;
+    margin-bottom: 28px; box-shadow: var(--shadow-sm);
+    display: none;
+  }
+  #chartRow.visible { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
+  #chartRow h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+  .chart-wrap { flex: 1; min-width: 200px; max-width: 300px; margin: 0 auto; }
+  .chart-legend { flex: 2; min-width: 200px; }
+  .legend-item { display: flex; align-items: center; gap: 10px; padding: 6px 0;
+    border-bottom: 1px solid var(--border); font-size: 13px; }
+  .legend-item:last-child { border-bottom: none; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-name { flex: 1; color: var(--text2); }
+  .legend-val { font-family: var(--mono); font-weight: 600; font-size: 13px; }
+
+  /* ─── SECTION HEADER ─── */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; gap: 12px; flex-wrap: wrap;
+  }
+  .section-header h2 { font-size: 16px; font-weight: 600; color: var(--text); }
+
+  /* ─── HOSTEL CARDS ─── */
+  #hostelGrid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;
+  }
+  .hostel-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    box-shadow: var(--shadow-sm); cursor: default;
+    transition: box-shadow 0.2s, transform 0.15s;
+  }
+  .hostel-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .hostel-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .hostel-name { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.3; }
+  .hostel-badge {
+    background: var(--accent-light); color: var(--accent);
+    font-size: 10px; font-weight: 700; padding: 3px 8px;
+    border-radius: 20px; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap;
+  }
+  .hostel-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .hstat { text-align: center; }
+  .hstat .hval { font-size: 20px; font-weight: 700; font-family: var(--mono); }
+  .hstat .hlabel { font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text3); margin-top: 2px; }
+  .hstat.occupied .hval { color: var(--occupied); }
+  .hstat.vacant .hval { color: var(--vacant); }
+  .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 14px; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; background: var(--accent); }
+  .progress-fill.high { background: var(--occupied); }
+  .progress-fill.med { background: var(--warning); }
+  .hostel-card .btn { width: 100%; justify-content: center; }
+
+  /* ─── ROOM VIEW ─── */
+  #roomView { display: none; }
+  #roomView.active { display: block; }
+  #hostelView.hidden { display: none; }
+
+  .back-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .back-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--text2); cursor: pointer;
+    padding: 6px 12px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: var(--surface);
+    transition: all 0.15s;
+  }
+  .back-btn:hover { background: var(--surface2); color: var(--text); }
+  .room-view-title { font-size: 18px; font-weight: 700; flex: 1; }
+
+  /* ─── SEARCH/FILTER BAR ─── */
+  .filter-bar {
+    display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 160px; }
+  .search-wrap input {
+    width: 100%; padding: 9px 12px 9px 36px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text); font-family: var(--font); font-size: 13px;
+    transition: border-color 0.15s;
+  }
+  .search-wrap input:focus { outline: none; border-color: var(--accent); }
+  .search-icon {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--text3); font-size: 14px; pointer-events: none;
+  }
+  .filter-tabs { display: flex; gap: 4px; }
+  .filter-tab {
+    padding: 8px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); background: var(--surface);
+    color: var(--text2); transition: all 0.15s; white-space: nowrap;
+  }
+  .filter-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .filter-tab:hover:not(.active) { background: var(--surface2); }
+
+  /* ─── ROOM GRID ─── */
+  #roomGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .room-tile {
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    border: 2px solid;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.15s; position: relative;
+    font-family: var(--mono);
+  }
+  .room-tile.vacant {
+    background: var(--vacant-bg); border-color: var(--vacant-border); color: var(--vacant);
+  }
+  .room-tile.occupied {
+    background: var(--occupied-bg); border-color: var(--occupied-border); color: var(--occupied);
+  }
+  .room-tile:hover { transform: scale(1.05); box-shadow: var(--shadow-md); z-index: 2; }
+  .room-tile .rnum { font-size: 15px; font-weight: 700; }
+  .room-tile .rico { font-size: 18px; line-height: 1; }
+  .room-tile .remark-dot {
+    position: absolute; top: 5px; right: 5px;
+    width: 7px; height: 7px; border-radius: 50%; background: var(--warning);
+  }
+  .room-tile.hidden-tile { display: none; }
+  #noRooms { text-align: center; color: var(--text3); padding: 40px; display: none; font-size: 14px; }
+
+  /* ─── ROOM DETAIL PANEL ─── */
+  #overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+    backdrop-filter: blur(3px);
+  }
+  #overlay.active { display: flex; }
+  #roomPanel {
+    background: var(--surface); border-radius: var(--radius);
+    width: 100%; max-width: 460px; box-shadow: var(--shadow-lg);
+    overflow: hidden; animation: panelIn 0.2s ease;
+  }
+  @keyframes panelIn {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .panel-header {
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-header h3 { font-size: 16px; font-weight: 700; }
+  .panel-close {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--surface2);
+    border: 1px solid var(--border); cursor: pointer; display: flex;
+    align-items: center; justify-content: center; font-size: 14px; color: var(--text3);
+    transition: all 0.15s;
+  }
+  .panel-close:hover { background: var(--border); color: var(--text); }
+  .panel-body { padding: 20px; }
+  .panel-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+  .pinfo-item { background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 12px; }
+  .pinfo-item .pi-label { font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text3); margin-bottom: 3px; }
+  .pinfo-item .pi-val { font-size: 13px; font-weight: 600; }
+  .pi-val.vacant { color: var(--vacant); }
+  .pi-val.occupied { color: var(--occupied); }
+  .panel-section { margin-bottom: 16px; }
+  .panel-section label { display: block; font-size: 12px; font-weight: 600;
+    color: var(--text2); margin-bottom: 8px; }
+  .status-toggle { display: flex; gap: 8px; }
+  .status-btn {
+    flex: 1; padding: 9px; border-radius: var(--radius-sm); border: 2px solid;
+    cursor: pointer; font-family: var(--font); font-size: 13px; font-weight: 600;
+    transition: all 0.15s; text-align: center;
+  }
+  .status-btn.vacant-btn { background: var(--vacant-bg); border-color: var(--vacant-border); color: var(--vacant); }
+  .status-btn.vacant-btn.active, .status-btn.vacant-btn:hover { background: var(--vacant); color: #fff; }
+  .status-btn.occupied-btn { background: var(--occupied-bg); border-color: var(--occupied-border); color: var(--occupied); }
+  .status-btn.occupied-btn.active, .status-btn.occupied-btn:hover { background: var(--occupied); color: #fff; }
+  .remark-area {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px;
+    color: var(--text); background: var(--surface); resize: vertical; min-height: 80px;
+    transition: border-color 0.15s;
+  }
+  .remark-area:focus { outline: none; border-color: var(--accent); }
+  .remark-area.over-limit { border-color: var(--occupied); }
+  .word-counter { font-size: 11px; color: var(--text3); text-align: right; margin-top: 4px; }
+  .word-counter.warn { color: var(--warning); font-weight: 600; }
+  .word-counter.error { color: var(--occupied); font-weight: 600; }
+  .auth-notice {
+    background: #FEFCE8; border: 1px solid #FDE68A; border-radius: var(--radius-sm);
+    padding: 10px 12px; font-size: 12px; color: #92400E; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  [data-theme="dark"] .auth-notice { background: #2D2008; border-color: #78350F; color: #FDE68A; }
+  .panel-actions { display: flex; gap: 8px; justify-content: flex-end; padding-top: 4px; }
+
+  /* ─── AUTH MODAL ─── */
+  #authModal {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 300;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+  #authModal.active { display: flex; }
+  .auth-box {
+    background: var(--surface); border-radius: var(--radius);
+    width: 100%; max-width: 380px; padding: 28px;
+    box-shadow: var(--shadow-lg); animation: panelIn 0.2s ease;
+  }
+  .auth-box h3 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .auth-box p { font-size: 13px; color: var(--text3); margin-bottom: 20px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600;
+    color: var(--text2); margin-bottom: 6px; }
+  .form-group input {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-family: var(--font); font-size: 14px;
+    color: var(--text); background: var(--surface); transition: border-color 0.15s;
+  }
+  .form-group input:focus { outline: none; border-color: var(--accent); }
+  .form-error { font-size: 12px; color: var(--occupied); margin-top: 6px; min-height: 16px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+  /* ─── TOAST ─── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 500;
+    background: var(--text); color: var(--surface);
+    padding: 12px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+    box-shadow: var(--shadow-lg); transform: translateY(20px); opacity: 0;
+    transition: all 0.25s ease; pointer-events: none;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { background: var(--vacant); }
+  #toast.error { background: var(--occupied); }
+
+  /* ─── LAST UPDATED ─── */
+  .last-updated { font-size: 10px; color: var(--text3); margin-top: 6px; }
+
+  /* ─── SETTINGS VIEW ─── */
+  #settingsView { display: none; }
+  #settingsView.active { display: block; }
+  .settings-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; max-width: 480px;
+    box-shadow: var(--shadow-sm); margin-bottom: 16px;
+  }
+  .settings-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .settings-card p { font-size: 13px; color: var(--text3); margin-bottom: 18px; }
+
+  /* ─── EXPORT ROW ─── */
+  .export-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ─── CONFIRM MODAL ─── */
+  #confirmModal {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 400;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+  #confirmModal.active { display: flex; }
+  .confirm-box {
+    background: var(--surface); border-radius: var(--radius);
+    width: 100%; max-width: 360px; padding: 24px;
+    box-shadow: var(--shadow-lg); animation: panelIn 0.2s ease;
+  }
+  .confirm-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .confirm-box p { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+
+  /* ─── IMPORT ─── */
+  #importFile { display: none; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 600px) {
+    #adminBar { padding: 8px 14px; }
+    #adminBar .brand span { display: none; }
+    #app { padding: 16px 12px; }
+    #roomGrid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 7px; }
+    .filter-tabs { flex-wrap: wrap; }
+  }
+
+  /* ─── LOADING ─── */
+  .spinner {
+    width: 20px; height: 20px; border: 2px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.7s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── LEGEND ─── */
+  .room-legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--text3); }
+  .rl-item { display: flex; align-items: center; gap: 5px; }
+  .rl-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .rl-dot.v { background: var(--vacant); }
+  .rl-dot.o { background: var(--occupied); }
+  .rl-dot.r { background: var(--warning); }
+</style>
+</head>
+<body>
+
+<!-- ADMIN BAR -->
+<div id="adminBar">
+  <div class="brand">🏨 <span>Hostel Room Occupancy Manager</span></div>
+  <div class="controls">
+    <div id="adminStatus"><span class="dot off" id="statusDot"></span><span id="statusText">Not logged in</span></div>
+    <button class="bar-btn accent" id="btnAdminLogin" onclick="showAuthModal('login')">Login as Admin</button>
+    <button class="bar-btn" id="btnAdminLogout" style="display:none" onclick="adminLogout()">Logout</button>
+    <button class="bar-btn" id="btnSettings" onclick="showSettings()" style="display:none">⚙ Settings</button>
+    <button class="bar-btn" onclick="toggleChart()">📊 Chart</button>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+  </div>
+</div>
+
+<!-- MAIN HEADER -->
+<div id="mainHeader">
+  <div>
+    <h1 id="pageTitle">Hostel Overview</h1>
+    <p id="pageSubtitle">Real-time occupancy across all hostels</p>
+  </div>
+  <div id="headerActions">
+    <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">⬆ Import</button>
+    <input type="file" id="importFile" accept=".json" onchange="importData(event)">
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- OVERALL STATS -->
+  <div id="statsRow">
+    <div class="stat-card accent-card">
+      <div class="label">Total Rooms</div>
+      <div class="value" id="statTotal">—</div>
+      <div class="sub">Across all hostels</div>
+    </div>
+    <div class="stat-card occupied-card">
+      <div class="label">Occupied</div>
+      <div class="value" id="statOccupied">—</div>
+      <div class="sub" id="statOccPct">—</div>
+    </div>
+    <div class="stat-card vacant-card">
+      <div class="label">Vacant</div>
+      <div class="value" id="statVacant">—</div>
+      <div class="sub" id="statVacPct">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Last Updated</div>
+      <div class="value" id="statTime" style="font-size:16px;padding-top:4px">—</div>
+      <div class="sub" id="statDate">—</div>
+    </div>
+  </div>
+
+  <!-- CHART ROW -->
+  <div id="chartRow">
+    <div class="chart-wrap">
+      <canvas id="occupancyChart" width="220" height="220"></canvas>
+    </div>
+    <div class="chart-legend" id="chartLegend"></div>
+  </div>
+
+  <!-- HOSTEL VIEW -->
+  <div id="hostelView">
+    <div class="section-header">
+      <h2>All Hostels</h2>
+    </div>
+    <div id="hostelGrid"></div>
+  </div>
+
+  <!-- ROOM VIEW -->
+  <div id="roomView">
+    <div class="back-row">
+      <div class="back-btn" onclick="showHostelView()">← Back</div>
+      <div class="room-view-title" id="roomViewTitle">Rooms</div>
+      <div class="room-legend">
+        <div class="rl-item"><span class="rl-dot v"></span> Vacant</div>
+        <div class="rl-item"><span class="rl-dot o"></span> Occupied</div>
+        <div class="rl-item"><span class="rl-dot r"></span> Has Remark</div>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="roomSearch" placeholder="Search room number…" oninput="filterRooms()">
+      </div>
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all" onclick="setFilter('all', this)">All</button>
+        <button class="filter-tab" data-filter="vacant" onclick="setFilter('vacant', this)">Vacant</button>
+        <button class="filter-tab" data-filter="occupied" onclick="setFilter('occupied', this)">Occupied</button>
+      </div>
+    </div>
+    <div id="roomGrid"></div>
+    <div id="noRooms">No rooms match your search.</div>
+  </div>
+
+  <!-- SETTINGS VIEW -->
+  <div id="settingsView">
+    <div class="back-row">
+      <div class="back-btn" onclick="showHostelView()">← Back to Dashboard</div>
+      <div class="room-view-title">Admin Settings</div>
+    </div>
+    <div class="settings-card">
+      <h3>Change Admin Password</h3>
+      <p>Update the password required to edit room status and remarks.</p>
+      <div class="form-group">
+        <label>Current Password</label>
+        <input type="password" id="cpCurrent" placeholder="Current password">
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="cpNew" placeholder="New password (min 4 chars)">
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="cpConfirm" placeholder="Confirm new password">
+      </div>
+      <div class="form-error" id="cpError"></div>
+      <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+    </div>
+    <div class="settings-card">
+      <h3>Data Management</h3>
+      <p>Export all occupancy data or reset to a clean state. Resets cannot be undone.</p>
+      <div class="export-row">
+        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn btn-secondary" onclick="exportJSON()">⬇ Export JSON</button>
+        <button class="btn btn-danger" onclick="confirmReset()">🗑 Reset All Data</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ROOM DETAIL OVERLAY -->
+<div id="overlay" onclick="closePanel(event)">
+  <div id="roomPanel">
+    <div class="panel-header">
+      <h3 id="panelTitle">Room Details</h3>
+      <div class="panel-close" onclick="closePanel(null, true)">✕</div>
+    </div>
+    <div class="panel-body">
+      <div class="panel-info">
+        <div class="pinfo-item">
+          <div class="pi-label">Hostel</div>
+          <div class="pi-val" id="piHostel">—</div>
+        </div>
+        <div class="pinfo-item">
+          <div class="pi-label">Status</div>
+          <div class="pi-val" id="piStatus">—</div>
+        </div>
+        <div class="pinfo-item" style="grid-column:1/-1">
+          <div class="pi-label">Last Updated</div>
+          <div class="pi-val" id="piUpdated" style="font-size:12px;font-weight:500">—</div>
+        </div>
+      </div>
+      <div id="authNotice" class="auth-notice" style="display:none">
+        🔒 Login as admin to edit this room.
+      </div>
+      <div id="editArea">
+        <div class="panel-section">
+          <label>Room Status</label>
+          <div class="status-toggle">
+            <button class="status-btn vacant-btn" id="btnVacant" onclick="setPanelStatus('vacant')">🟢 Vacant</button>
+            <button class="status-btn occupied-btn" id="btnOccupied" onclick="setPanelStatus('occupied')">🔴 Occupied</button>
+          </div>
+        </div>
+        <div class="panel-section">
+          <label>Remarks <span style="color:var(--text3);font-weight:400">(max 50 words)</span></label>
+          <textarea class="remark-area" id="remarkInput" placeholder="e.g. Ready for allotment, Maintenance pending…" oninput="updateWordCount()"></textarea>
+          <div class="word-counter" id="wordCounter">0 / 50 words</div>
+        </div>
+        <div class="panel-actions">
+          <button class="btn btn-secondary" onclick="closePanel(null, true)">Cancel</button>
+          <button class="btn btn-primary" onclick="saveRoom()">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div id="authModal">
+  <div class="auth-box" id="authBox">
+    <h3 id="authTitle">Admin Login</h3>
+    <p id="authSubtitle">Enter the admin password to make changes.</p>
+    <div id="authFields"></div>
+    <div class="form-error" id="authError"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeAuth()">Cancel</button>
+      <button class="btn btn-primary" id="authSubmitBtn" onclick="submitAuth()">Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirmModal">
+  <div class="confirm-box">
+    <h3 id="confirmTitle">Are you sure?</h3>
+    <p id="confirmMsg">This action cannot be undone.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirmOkBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATA MODEL
+// ═══════════════════════════════════════════════════════
+const HOSTELS_DEF = [
+  { id: 'som',     name: "Senior Officers' Mess", rooms: 30 },
+  { id: 'vivek',   name: "Vivek Hostel",          rooms: 60 },
+  { id: 'chandan', name: "Chandan Hostel",         rooms: 20 },
+  { id: 'vinod',   name: "Vinod Hostel",           rooms: 20 },
+  { id: 'chauhan', name: "Chauhan Hostel",         rooms: 20 },
+];
+
+let state = {
+  rooms: {},       // { hostelId_roomNum: { status, remark, updatedAt } }
+  password: null,  // hashed or null
+  darkMode: false,
+  lastGlobal: null
+};
+
+let adminLoggedIn = false;
+let currentHostel = null;
+let currentFilter = 'all';
+let currentPanelKey = null;
+let panelStatus = 'vacant';
+let chartInstance = null;
+let chartVisible = false;
+let authPurpose = 'login';
+
+// ═══════════════════════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════════════════════
+function saveState() {
+  try { localStorage.setItem('hrom_state', JSON.stringify(state)); } catch(e) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem('hrom_state');
+    if (raw) {
+      const loaded = JSON.parse(raw);
+      state = Object.assign(state, loaded);
+    }
+  } catch(e) {}
+}
+function initRooms() {
+  HOSTELS_DEF.forEach(h => {
+    for (let i = 1; i <= h.rooms; i++) {
+      const key = `${h.id}_${i}`;
+      if (!state.rooms[key]) {
+        state.rooms[key] = { status: 'vacant', remark: '', updatedAt: null };
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// SIMPLE HASH (for password storage – not cryptographic, but avoids plaintext)
+// ═══════════════════════════════════════════════════════
+function simpleHash(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0;
+  }
+  return h.toString(16);
+}
+
+// ═══════════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════════
+function getHostelStats(hostelId) {
+  const def = HOSTELS_DEF.find(h => h.id === hostelId);
+  let occ = 0;
+  for (let i = 1; i <= def.rooms; i++) {
+    const key = `${hostelId}_${i}`;
+    if (state.rooms[key]?.status === 'occupied') occ++;
+  }
+  return { total: def.rooms, occupied: occ, vacant: def.rooms - occ };
+}
+function getOverallStats() {
+  let total = 0, occ = 0;
+  HOSTELS_DEF.forEach(h => {
+    const s = getHostelStats(h.id);
+    total += s.total; occ += s.occupied;
+  });
+  return { total, occupied: occ, vacant: total - occ };
+}
+function fmtTime(iso) {
+  if (!iso) return 'Never';
+  const d = new Date(iso);
+  return d.toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12: true });
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER STATS ROW
+// ═══════════════════════════════════════════════════════
+function renderStats() {
+  const s = getOverallStats();
+  document.getElementById('statTotal').textContent = s.total;
+  document.getElementById('statOccupied').textContent = s.occupied;
+  document.getElementById('statVacant').textContent = s.vacant;
+  document.getElementById('statOccPct').textContent = s.total ? Math.round(s.occupied/s.total*100) + '% occupancy' : '';
+  document.getElementById('statVacPct').textContent = s.total ? Math.round(s.vacant/s.total*100) + '% available' : '';
+  const now = new Date();
+  document.getElementById('statTime').textContent = now.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:true});
+  document.getElementById('statDate').textContent = now.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER HOSTEL CARDS
+// ═══════════════════════════════════════════════════════
+function renderHostelCards() {
+  const grid = document.getElementById('hostelGrid');
+  grid.innerHTML = '';
+  HOSTELS_DEF.forEach(h => {
+    const s = getHostelStats(h.id);
+    const pct = Math.round(s.occupied / s.total * 100);
+    const fillClass = pct > 80 ? 'high' : pct > 50 ? 'med' : '';
+    const card = document.createElement('div');
+    card.className = 'hostel-card';
+    card.innerHTML = `
+      <div class="hostel-card-header">
+        <div class="hostel-name">${h.name}</div>
+        <div class="hostel-badge">${h.rooms} rooms</div>
+      </div>
+      <div class="hostel-stats">
+        <div class="hstat"><div class="hval">${s.total}</div><div class="hlabel">Total</div></div>
+        <div class="hstat occupied"><div class="hval">${s.occupied}</div><div class="hlabel">Occupied</div></div>
+        <div class="hstat vacant"><div class="hval">${s.vacant}</div><div class="hlabel">Vacant</div></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-size:11px;color:var(--text3)">Occupancy</span>
+        <span style="font-size:12px;font-weight:700;font-family:var(--mono);color:var(--text2)">${pct}%</span>
+      </div>
+      <button class="btn btn-primary" onclick="openHostel('${h.id}')">View Rooms →</button>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// ROOM VIEW
+// ═══════════════════════════════════════════════════════
+function openHostel(hostelId) {
+  currentHostel = hostelId;
+  const def = HOSTELS_DEF.find(h => h.id === hostelId);
+  document.getElementById('roomViewTitle').textContent = def.name;
+  document.getElementById('pageTitle').textContent = def.name;
+  document.getElementById('pageSubtitle').textContent = `${def.rooms} rooms · click any room to view details`;
+  document.getElementById('hostelView').classList.add('hidden');
+  document.getElementById('roomView').classList.add('active');
+  document.getElementById('settingsView').classList.remove('active');
+  document.getElementById('roomSearch').value = '';
+  currentFilter = 'all';
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === 'all'));
+  renderRoomGrid();
+}
+function showHostelView() {
+  currentHostel = null;
+  document.getElementById('hostelView').classList.remove('hidden');
+  document.getElementById('roomView').classList.remove('active');
+  document.getElementById('settingsView').classList.remove('active');
+  document.getElementById('pageTitle').textContent = 'Hostel Overview';
+  document.getElementById('pageSubtitle').textContent = 'Real-time occupancy across all hostels';
+  renderHostelCards();
+  renderStats();
+  renderChart();
+}
+function renderRoomGrid() {
+  const def = HOSTELS_DEF.find(h => h.id === currentHostel);
+  const grid = document.getElementById('roomGrid');
+  grid.innerHTML = '';
+  const search = document.getElementById('roomSearch').value.trim().toLowerCase();
+  let visible = 0;
+  for (let i = 1; i <= def.rooms; i++) {
+    const key = `${currentHostel}_${i}`;
+    const room = state.rooms[key];
+    const status = room?.status || 'vacant';
+    const remark = room?.remark || '';
+    const matchSearch = !search || String(i).includes(search);
+    const matchFilter = currentFilter === 'all' || currentFilter === status;
+    const tile = document.createElement('div');
+    tile.className = `room-tile ${status}`;
+    tile.id = `tile_${key}`;
+    if (!matchSearch || !matchFilter) tile.classList.add('hidden-tile');
+    else visible++;
+    tile.innerHTML = `
+      <div class="rico">${status === 'occupied' ? '🔴' : '🟢'}</div>
+      <div class="rnum">${i}</div>
+      ${remark.trim() ? '<div class="remark-dot"></div>' : ''}
+    `;
+    tile.onclick = () => openRoomPanel(key);
+    grid.appendChild(tile);
+  }
+  document.getElementById('noRooms').style.display = visible === 0 ? 'block' : 'none';
+}
+function filterRooms() { renderRoomGrid(); }
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderRoomGrid();
+}
+function updateTile(key) {
+  const tile = document.getElementById(`tile_${key}`);
+  if (!tile) return;
+  const room = state.rooms[key];
+  const status = room?.status || 'vacant';
+  const remark = room?.remark || '';
+  tile.className = `room-tile ${status}`;
+  tile.innerHTML = `
+    <div class="rico">${status === 'occupied' ? '🔴' : '🟢'}</div>
+    <div class="rnum">${key.split('_')[1]}</div>
+    ${remark.trim() ? '<div class="remark-dot"></div>' : ''}
+  `;
+  tile.onclick = () => openRoomPanel(key);
+  // re-check visibility
+  const search = document.getElementById('roomSearch').value.trim().toLowerCase();
+  const roomNum = key.split('_')[1];
+  const matchSearch = !search || roomNum.includes(search);
+  const matchFilter = currentFilter === 'all' || currentFilter === status;
+  if (!matchSearch || !matchFilter) tile.classList.add('hidden-tile');
+}
+
+// ═══════════════════════════════════════════════════════
+// ROOM PANEL
+// ═══════════════════════════════════════════════════════
+function openRoomPanel(key) {
+  currentPanelKey = key;
+  const [hostelId, roomNum] = key.split('_');
+  const def = HOSTELS_DEF.find(h => h.id === hostelId);
+  const room = state.rooms[key] || { status: 'vacant', remark: '', updatedAt: null };
+  panelStatus = room.status;
+  document.getElementById('panelTitle').textContent = `Room ${roomNum} — ${def.name}`;
+  document.getElementById('piHostel').textContent = def.name;
+  const statusEl = document.getElementById('piStatus');
+  statusEl.textContent = room.status === 'occupied' ? '🔴 Occupied' : '🟢 Vacant';
+  statusEl.className = `pi-val ${room.status}`;
+  document.getElementById('piUpdated').textContent = fmtTime(room.updatedAt);
+  document.getElementById('remarkInput').value = room.remark || '';
+  updateWordCount();
+  updateStatusButtons();
+  document.getElementById('authNotice').style.display = adminLoggedIn ? 'none' : 'flex';
+  document.getElementById('editArea').style.opacity = adminLoggedIn ? '1' : '0.5';
+  document.getElementById('editArea').style.pointerEvents = adminLoggedIn ? 'auto' : 'none';
+  if (!adminLoggedIn) document.getElementById('editArea').style.display = 'block';
+  document.getElementById('overlay').classList.add('active');
+}
+function closePanel(e, force) {
+  if (e && e.target !== document.getElementById('overlay') && !force) return;
+  document.getElementById('overlay').classList.remove('active');
+  currentPanelKey = null;
+}
+function setPanelStatus(s) {
+  if (!adminLoggedIn) { showToast('Login as admin to edit.', 'error'); return; }
+  panelStatus = s;
+  updateStatusButtons();
+}
+function updateStatusButtons() {
+  document.getElementById('btnVacant').classList.toggle('active', panelStatus === 'vacant');
+  document.getElementById('btnOccupied').classList.toggle('active', panelStatus === 'occupied');
+}
+function updateWordCount() {
+  const text = document.getElementById('remarkInput').value.trim();
+  const words = text ? text.split(/\s+/).length : 0;
+  const el = document.getElementById('wordCounter');
+  el.textContent = `${words} / 50 words`;
+  el.className = 'word-counter' + (words > 50 ? ' error' : words > 40 ? ' warn' : '');
+  document.getElementById('remarkInput').classList.toggle('over-limit', words > 50);
+}
+function countWords(text) {
+  const t = text.trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+function saveRoom() {
+  if (!adminLoggedIn) { showToast('Login as admin first.', 'error'); return; }
+  if (!currentPanelKey) return;
+  const remark = document.getElementById('remarkInput').value;
+  if (countWords(remark) > 50) { showToast('Remark exceeds 50 words.', 'error'); return; }
+  state.rooms[currentPanelKey] = {
+    status: panelStatus,
+    remark: remark,
+    updatedAt: new Date().toISOString()
+  };
+  state.lastGlobal = new Date().toISOString();
+  saveState();
+  updateTile(currentPanelKey);
+  renderHostelCards();
+  renderStats();
+  renderChart();
+  closePanel(null, true);
+  showToast('Room updated successfully.', 'success');
+}
+
+// ═══════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════
+function showAuthModal(purpose) {
+  authPurpose = purpose;
+  const fields = document.getElementById('authFields');
+  document.getElementById('authError').textContent = '';
+  if (!state.password) {
+    // First time setup
+    document.getElementById('authTitle').textContent = 'Create Admin Password';
+    document.getElementById('authSubtitle').textContent = 'Set a password to protect editing functions.';
+    document.getElementById('authSubmitBtn').textContent = 'Create Password';
+    fields.innerHTML = `
+      <div class="form-group"><label>New Password</label><input type="password" id="authPw1" placeholder="Min 4 characters" autocomplete="new-password"></div>
+      <div class="form-group"><label>Confirm Password</label><input type="password" id="authPw2" placeholder="Repeat password"></div>
+    `;
+    authPurpose = 'create';
+  } else {
+    document.getElementById('authTitle').textContent = 'Admin Login';
+    document.getElementById('authSubtitle').textContent = 'Enter the admin password to make changes.';
+    document.getElementById('authSubmitBtn').textContent = 'Login';
+    fields.innerHTML = `<div class="form-group"><label>Password</label><input type="password" id="authPw" placeholder="Admin password" autocomplete="current-password"></div>`;
+    authPurpose = 'login';
+  }
+  document.getElementById('authModal').classList.add('active');
+  setTimeout(() => {
+    const el = document.getElementById('authPw1') || document.getElementById('authPw');
+    if (el) el.focus();
+  }, 50);
+}
+function closeAuth() { document.getElementById('authModal').classList.remove('active'); }
+function submitAuth() {
+  document.getElementById('authError').textContent = '';
+  if (authPurpose === 'create') {
+    const pw1 = document.getElementById('authPw1').value;
+    const pw2 = document.getElementById('authPw2').value;
+    if (pw1.length < 4) { document.getElementById('authError').textContent = 'Password must be at least 4 characters.'; return; }
+    if (pw1 !== pw2) { document.getElementById('authError').textContent = 'Passwords do not match.'; return; }
+    state.password = simpleHash(pw1);
+    saveState();
+    closeAuth();
+    adminLoggedIn = true;
+    updateAdminUI();
+    showToast('Password created! You are now logged in.', 'success');
+  } else {
+    const pw = document.getElementById('authPw').value;
+    if (simpleHash(pw) === state.password) {
+      adminLoggedIn = true;
+      updateAdminUI();
+      closeAuth();
+      showToast('Logged in as admin.', 'success');
+    } else {
+      document.getElementById('authError').textContent = 'Incorrect password.';
+    }
+  }
+}
+function adminLogout() {
+  adminLoggedIn = false;
+  updateAdminUI();
+  showToast('Logged out.');
+}
+function updateAdminUI() {
+  document.getElementById('btnAdminLogin').style.display = adminLoggedIn ? 'none' : '';
+  document.getElementById('btnAdminLogout').style.display = adminLoggedIn ? '' : 'none';
+  document.getElementById('btnSettings').style.display = adminLoggedIn ? '' : 'none';
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  dot.className = 'dot' + (adminLoggedIn ? '' : ' off');
+  text.textContent = adminLoggedIn ? 'Admin' : 'Not logged in';
+}
+document.getElementById('authModal').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAuth();
+});
+
+// ═══════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════
+function showSettings() {
+  document.getElementById('hostelView').classList.add('hidden');
+  document.getElementById('roomView').classList.remove('active');
+  document.getElementById('settingsView').classList.add('active');
+  document.getElementById('pageTitle').textContent = 'Settings';
+  document.getElementById('pageSubtitle').textContent = 'Admin controls & data management';
+  ['cpCurrent','cpNew','cpConfirm'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cpError').textContent = '';
+}
+function changePassword() {
+  const cur = document.getElementById('cpCurrent').value;
+  const nw = document.getElementById('cpNew').value;
+  const cf = document.getElementById('cpConfirm').value;
+  const err = document.getElementById('cpError');
+  err.textContent = '';
+  if (simpleHash(cur) !== state.password) { err.textContent = 'Current password is incorrect.'; return; }
+  if (nw.length < 4) { err.textContent = 'New password must be at least 4 characters.'; return; }
+  if (nw !== cf) { err.textContent = 'Passwords do not match.'; return; }
+  state.password = simpleHash(nw);
+  saveState();
+  ['cpCurrent','cpNew','cpConfirm'].forEach(id => document.getElementById(id).value = '');
+  showToast('Password changed successfully.', 'success');
+}
+
+// ═══════════════════════════════════════════════════════
+// CHART
+// ═══════════════════════════════════════════════════════
+const CHART_COLORS = ['#3B6FE8','#38A169','#D69E2E','#E53E3E','#805AD5'];
+function toggleChart() {
+  chartVisible = !chartVisible;
+  document.getElementById('chartRow').classList.toggle('visible', chartVisible);
+  if (chartVisible) renderChart();
+}
+function renderChart() {
+  if (!chartVisible) return;
+  const labels = HOSTELS_DEF.map(h => h.name.split(' ')[0]);
+  const occData = HOSTELS_DEF.map(h => getHostelStats(h.id).occupied);
+  const vacData = HOSTELS_DEF.map(h => getHostelStats(h.id).vacant);
+  const totalOcc = occData.reduce((a,b)=>a+b,0);
+  const totalVac = vacData.reduce((a,b)=>a+b,0);
+  const legend = document.getElementById('chartLegend');
+  legend.innerHTML = '<h3>Occupancy by Hostel</h3>';
+  HOSTELS_DEF.forEach((h, i) => {
+    const s = getHostelStats(h.id);
+    const pct = Math.round(s.occupied/s.total*100);
+    legend.innerHTML += `
+      <div class="legend-item">
+        <div class="legend-dot" style="background:${CHART_COLORS[i]}"></div>
+        <div class="legend-name">${h.name}</div>
+        <div class="legend-val">${s.occupied}/${s.total} <span style="font-size:10px;color:var(--text3)">(${pct}%)</span></div>
+      </div>`;
+  });
+  const ctx = document.getElementById('occupancyChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Occupied', 'Vacant'],
+      datasets: [{ data: [totalOcc, totalVac], backgroundColor: ['#E53E3E', '#38A169'], borderWidth: 0, hoverOffset: 8 }]
+    },
+    options: {
+      cutout: '72%', responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.raw} rooms (${Math.round(ctx.raw/(totalOcc+totalVac)*100)}%)`
+          }
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════
+function exportCSV() {
+  let csv = 'Hostel,Room,Status,Remark,Last Updated\n';
+  HOSTELS_DEF.forEach(h => {
+    for (let i = 1; i <= h.rooms; i++) {
+      const key = `${h.id}_${i}`;
+      const room = state.rooms[key] || {};
+      const remark = (room.remark||'').replace(/"/g,'""');
+      csv += `"${h.name}",${i},"${room.status||'vacant'}","${remark}","${fmtTime(room.updatedAt)}"\n`;
+    }
+  });
+  downloadFile(csv, 'hostel_occupancy_' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv');
+  showToast('CSV exported.');
+}
+function exportJSON() {
+  const data = {
+    exportedAt: new Date().toISOString(),
+    hostels: HOSTELS_DEF.map(h => ({
+      id: h.id, name: h.name, rooms: []
+    }))
+  };
+  HOSTELS_DEF.forEach((h, idx) => {
+    for (let i = 1; i <= h.rooms; i++) {
+      const key = `${h.id}_${i}`;
+      data.hostels[idx].rooms.push({ num: i, ...(state.rooms[key] || { status:'vacant', remark:'' }) });
+    }
+  });
+  downloadFile(JSON.stringify(data, null, 2), 'hostel_occupancy_' + new Date().toISOString().slice(0,10) + '.json', 'application/json');
+  showToast('JSON exported.');
+}
+function downloadFile(content, filename, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = filename;
+  a.click();
+}
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.hostels) throw new Error('Invalid format');
+      data.hostels.forEach(h => {
+        h.rooms.forEach(r => {
+          const key = `${h.id}_${r.num}`;
+          if (state.rooms[key] !== undefined) {
+            state.rooms[key] = { status: r.status, remark: r.remark, updatedAt: r.updatedAt };
+          }
+        });
+      });
+      saveState();
+      renderAll();
+      showToast('Data imported successfully.', 'success');
+    } catch(err) { showToast('Import failed: invalid file.', 'error'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ═══════════════════════════════════════════════════════
+// CONFIRM / RESET
+// ═══════════════════════════════════════════════════════
+function confirmReset() {
+  if (!adminLoggedIn) { showToast('Admin access required.', 'error'); return; }
+  document.getElementById('confirmTitle').textContent = 'Reset All Data?';
+  document.getElementById('confirmMsg').textContent = 'All room statuses and remarks will be cleared. This cannot be undone.';
+  document.getElementById('confirmOkBtn').onclick = () => { resetAll(); closeConfirm(); };
+  document.getElementById('confirmModal').classList.add('active');
+}
+function closeConfirm() { document.getElementById('confirmModal').classList.remove('active'); }
+function resetAll() {
+  HOSTELS_DEF.forEach(h => {
+    for (let i = 1; i <= h.rooms; i++) {
+      state.rooms[`${h.id}_${i}`] = { status: 'vacant', remark: '', updatedAt: null };
+    }
+  });
+  state.lastGlobal = null;
+  saveState();
+  renderAll();
+  showToast('All data has been reset.', 'success');
+}
+
+// ═══════════════════════════════════════════════════════
+// DARK MODE
+// ═══════════════════════════════════════════════════════
+function toggleTheme() {
+  state.darkMode = !state.darkMode;
+  document.documentElement.setAttribute('data-theme', state.darkMode ? 'dark' : 'light');
+  document.querySelector('.theme-toggle').textContent = state.darkMode ? '☀️' : '🌙';
+  saveState();
+  renderChart();
+}
+
+// ═══════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type ? ' '+type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3000);
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════════════
+function renderAll() {
+  renderStats();
+  renderHostelCards();
+  if (currentHostel) renderRoomGrid();
+  renderChart();
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+loadState();
+initRooms();
+if (state.darkMode) {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  document.querySelector('.theme-toggle').textContent = '☀️';
+}
+updateAdminUI();
+renderAll();
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closePanel(null, true); closeAuth(); closeConfirm(); }
+});
+
+// Prompt first-time setup
+setTimeout(() => {
+  if (!state.password) {
+    showToast('Welcome! Set an admin password via the Login button.', '');
+  }
+}, 800);
+</script>
+</body>
+</html>
